@@ -1,0 +1,22 @@
+{
+    "build": {
+        "extra_flags": "-DHELLO_PLATFORMIO",
+        "f_cpu": "1000000L",
+        "hwids": [
+            [
+                "0x1E90",
+                "0x0003"
+            ]
+        ],
+        "mcu": "attiny10"
+    },
+    "frameworks": [
+    ],
+    "name": "Generic ATTiny10",
+    "upload": {
+        "maximum_ram_size": 32,
+        "maximum_size": 1024
+    },
+    "url": "",
+    "vendor": ""
+}
