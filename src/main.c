@@ -108,48 +108,6 @@ void UpdateDisplay( void ) {
 }
 
 void SetTemperature( int8_t Whole, int8_t Frac ) {
-#if 0
-    // 816
-    bool Negative = ( Whole & 0x80 ) ? true : false;
-    uint8_t* Digits = DisplayData;
-
-    Digits[ 0 ] = DigitTable[ 0x12 ];
-    Digits[ 1 ] = DigitTable[ 0x12 ];
-    Digits[ 2 ] = DigitTable[ 0x12 ];
-    Digits[ 3 ] = DigitTable[ 0x11 ];
-
-    if ( Negative == true ) {
-        Whole = ~Whole;
-        Whole++;
-
-        Digits[ 0 ] = DigitTable[ 0x10 ];
-    }
-
-    if ( Whole >= 0 && Whole <= 9 ) {
-        Digits[ 2 ] = DigitTable[ Frac ];
-        Digits[ 1 ] = DigitTable[ Whole % 10 ] | _BV( 0x0 );
-    } else if ( Whole >= 10 && Whole <= 99 ) {
-        if ( Negative == true ) {
-            Digits[ 2 ] = DigitTable[ Whole % 10 ];
-            Digits[ 1 ] = DigitTable[ ( Whole / 10 ) % 10 ];
-        } else {
-            Digits[ 2 ] = DigitTable[ Frac ];
-            Digits[ 1 ] = DigitTable[ Whole % 10 ] | _BV( 0x0 );
-            Digits[ 0 ] = DigitTable[ ( Whole/ 10 ) % 10 ];
-        }
-    } else {
-        if ( Negative == true ) {
-            Digits[ 3 ] = DigitTable[ Whole % 10 ];
-            Digits[ 2 ] = DigitTable[ ( Whole / 10 ) % 10 ];
-            Digits[ 1 ] = DigitTable[ ( Whole / 100 ) % 100 ];
-        } else {
-            Digits[ 2 ] = DigitTable[ Whole % 10 ];
-            Digits[ 1 ] = DigitTable[ ( Whole / 10 ) % 10 ];
-            Digits[ 0 ] = DigitTable[ ( Whole / 100 ) % 10 ];
-        }
-    }
-#else
-    // 766
     bool Negative = ( Whole & 0x80 ) ? true : false;
     uint8_t* Digits = DisplayData;
     int8_t Ones = 0;
