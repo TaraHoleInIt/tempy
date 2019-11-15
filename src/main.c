@@ -108,13 +108,9 @@ void UpdateDisplay( void ) {
 }
 
 void SetTemperature( int8_t Whole, int8_t Frac ) {
+#if 0
+    // 816
     bool Negative = ( Whole & 0x80 ) ? true : false;
-    /*
-    uint8_t Digits[ 4 ] = {
-        0x12, 0x12, 0x12, 0x11
-    };
-    int8_t i = 0;
-    */
     uint8_t* Digits = DisplayData;
 
     Digits[ 0 ] = DigitTable[ 0x12 ];
@@ -152,6 +148,54 @@ void SetTemperature( int8_t Whole, int8_t Frac ) {
             Digits[ 0 ] = DigitTable[ ( Whole / 100 ) % 10 ];
         }
     }
+#else
+    // 766
+    bool Negative = ( Whole & 0x80 ) ? true : false;
+    uint8_t* Digits = DisplayData;
+    int8_t Ones = 0;
+    int8_t Tens = 0;
+    int8_t Hundreds = 0;
+
+    Digits[ 0 ] = DigitTable[ 0x12 ];
+    Digits[ 1 ] = DigitTable[ 0x12 ];
+    Digits[ 2 ] = DigitTable[ 0x12 ];
+    Digits[ 3 ] = DigitTable[ 0x11 ];
+
+    if ( Negative == true ) {
+        Whole = ~Whole;
+        Whole++;
+
+        Digits[ 0 ] = DigitTable[ 0x10 ];
+    }
+
+    Ones = Whole % 10;
+    Tens = ( Whole / 10 ) % 10;
+    Hundreds = ( Whole / 100 ) % 10;
+
+    if ( Whole >= 0 && Whole <= 9 ) {
+        Digits[ 2 ] = DigitTable[ Frac ];
+        Digits[ 1 ] = DigitTable[ Ones ] | _BV( 0x0 );
+    } else if ( Whole >= 10 && Whole <= 99 ) {
+        if ( Negative == true ) {
+            Digits[ 2 ] = DigitTable[ Ones ];
+            Digits[ 1 ] = DigitTable[ Tens ];
+        } else {
+            Digits[ 2 ] = DigitTable[ Frac ];
+            Digits[ 1 ] = DigitTable[ Ones ] | _BV( 0x0 );
+            Digits[ 0 ] = DigitTable[ Tens % 10 ];
+        }
+    } else {
+        if ( Negative == true ) {
+            Digits[ 3 ] = DigitTable[ Ones ];
+            Digits[ 2 ] = DigitTable[ Tens ];
+            Digits[ 1 ] = DigitTable[ Hundreds ];
+        } else {
+            Digits[ 2 ] = DigitTable[ Ones ];
+            Digits[ 1 ] = DigitTable[ Tens ];
+            Digits[ 0 ] = DigitTable[ Hundreds ];
+        }
+    }
+#endif
 }
 
 bool DHT_Read( void ) {
@@ -203,16 +247,18 @@ bool DHT_Read( void ) {
                     Data[ i ] |= 1;
                 }
             }
+
+            // Calculate checksum
+            // Ignore the last byte (the actual checksum)
+            if ( i < sizeof( Data ) - 1 ) {
+                CSum+= Data[ i ];
+            }
         }
     sei( );
 
     // Bring the sensor back to idle
     DDRB |= _BV( Pin_Sensor );
     PORTB |= _BV( Pin_Sensor );
-
-    for ( i = 0; i < sizeof( Data ) - 1; i++ ) {
-        CSum+= Data[ i ];
-    }
 
     TempWhole = Data[ 2 ];
     TempFrac = Data[ 3 ];
