@@ -153,7 +153,6 @@ void SetTemperature( int8_t Whole, int8_t Frac ) {
             Digits[ 0 ] = DigitTable[ Hundreds ];
         }
     }
-#endif
 }
 
 bool DHT_Read( void ) {
