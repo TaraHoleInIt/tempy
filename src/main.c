@@ -26,7 +26,7 @@
 
 void ShiftOut( uint8_t Data );
 void UpdateDisplay( void );
-void SetTemperature( int8_t Whole, int8_t Frac );
+void SetTemperature( uint8_t Whole, uint8_t Frac );
 bool DHT_Read( void );
 
 volatile bool ShouldUpdateSensor = false;
@@ -60,8 +60,8 @@ uint8_t DisplayData[ 4 ] = {
 
 int8_t DisplayIndex = 0;
 
-int8_t TempWhole = 0;
-int8_t TempFrac = 0;
+uint8_t TempWhole = 0;
+uint8_t TempFrac = 0;
 
 // Called every 1ms
 ISR( TIM0_COMPA_vect ) {
@@ -107,12 +107,12 @@ void UpdateDisplay( void ) {
     DisplayIndex++;
 }
 
-void SetTemperature( int8_t Whole, int8_t Frac ) {
+void SetTemperature( uint8_t Whole, uint8_t Frac ) {
     bool Negative = ( Whole & 0x80 ) ? true : false;
     uint8_t* Digits = DisplayData;
-    int8_t Ones = 0;
-    int8_t Tens = 0;
-    int8_t Hundreds = 0;
+    uint8_t Ones = 0;
+    uint8_t Tens = 0;
+    uint8_t Hundreds = 0;
 
     Digits[ 0 ] = DigitTable[ 0x12 ];
     Digits[ 1 ] = DigitTable[ 0x12 ];
@@ -241,7 +241,7 @@ int main( void ) {
             ShouldUpdateSensor = false;
 
             if ( DHT_Read( ) == false ) {
-                TempWhole = -127;
+                TempWhole = ( uint8_t ) -127;
                 TempFrac = 0;
             }
 
