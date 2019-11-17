@@ -140,7 +140,7 @@ void SetTemperature( uint8_t Whole, uint8_t Frac ) {
         } else {
             Digits[ 2 ] = DigitTable[ Frac ];
             Digits[ 1 ] = DigitTable[ Ones ] | _BV( 0x0 );
-            Digits[ 0 ] = DigitTable[ Tens % 10 ];
+            Digits[ 0 ] = DigitTable[ Tens ];
         }
     } else {
         if ( Negative == true ) {

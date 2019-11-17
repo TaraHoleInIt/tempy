@@ -1,11 +1,10 @@
 {
     "build": {
-        "extra_flags": "-DHELLO_PLATFORMIO",
+        "extra_flags": "",
         "f_cpu": "1000000L",
         "hwids": [
             [
-                "0x1E90",
-                "0x0003"
+                "0x1E9003"
             ]
         ],
         "mcu": "attiny10"
