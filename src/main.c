@@ -19,10 +19,22 @@
     }; \
 }
 
-#define Pin_Sensor 2
-#define Pin_Latch 0
-#define Pin_CLK 1
-#define Pin_Data 2
+// PIN Configuration
+#define Pin_Sensor PIN7
+#define Pin_Latch PIN4
+#define Pin_CLK PIN3
+#define Pin_Data PIN1
+
+// PORT Configuration
+#define PORTA_PINCTL( pin ) ( _SFR_MEM8( 0x410 + pin ) )
+
+#define SENSOR_PINCTL *( &( PORTA_PIN0CTRL ) + Pin_Sensor )
+#define SENSOR_DIR PORTA_DIR
+#define SENSOR_OUT PORTA_OUT
+#define SENSOR_IN PORTA_IN
+
+#define SHIFT_DIR PORTA_DIR
+#define SHIFT_OUT PORTA_OUT
 
 void ShiftOut( uint8_t Data );
 void UpdateDisplay( void );
@@ -64,6 +76,15 @@ uint8_t TempWhole = 0;
 uint8_t TempFrac = 0;
 
 // Called every 1ms
+ISR( TCA0_OVF_vect ) {
+    static volatile uint16_t i = 0;
+
+    if ( ++i >= 5000 ) {
+        ShouldUpdateSensor = true;
+        i = 0;
+    }
+}
+/*
 ISR( TIM0_COMPA_vect ) {
     static volatile uint16_t i = 0;
 
@@ -73,17 +94,18 @@ ISR( TIM0_COMPA_vect ) {
         ShouldUpdateSensor = true;
     }
 }
+*/
 
 void ShiftOut( uint8_t Data ) {
     uint8_t i = 0;
 
     for ( i = 0; i < 8; i++ ) {
         // Set the data pin according to the MSB of the digit data
-        PORTB = ( Data & 0x80 ) ? PORTB | _BV( Pin_Data ) : PORTB & ~_BV( Pin_Data );
+        SHIFT_OUT = ( Data & 0x80 ) ? SHIFT_OUT | _BV( Pin_Data ) : SHIFT_OUT & ~_BV( Pin_Data );
 
         // Pulse the clock line
-        PORTB |= _BV( Pin_CLK );
-        PORTB &= ~_BV( Pin_CLK );       
+        SHIFT_OUT |= _BV( Pin_CLK );
+        SHIFT_OUT &= ~_BV( Pin_CLK );       
 
         // Shift the next bit into the MSB
         Data<<= 1; 
@@ -97,14 +119,17 @@ void UpdateDisplay( void ) {
     ShiftOut( DisplayData[ DisplayIndex ] );
 
     // Latch the data into the shift registers
-    PORTB |= _BV( Pin_Latch );
-    PORTB &= ~_BV( Pin_Latch );
+    SHIFT_OUT |= _BV( Pin_Latch );
+    SHIFT_OUT &= ~_BV( Pin_Latch );
 
+    // Check if sensor pin is shared
+#if Pin_Sensor == Pin_CLK || Pin_Sensor == Pin_Data || Pin_Sensor == Pin_Latch
     // Bring sensor/data line back high
-    DDRB |= _BV( Pin_Sensor );
-    PORTB |= _BV( Pin_Sensor );
+    SHIFT_DIR |= Pin_Sensor;
+    SHIFT_OUT |= Pin_Sensor;
 
     DisplayIndex++;
+#endif
 }
 
 void SetTemperature( uint8_t Whole, uint8_t Frac ) {
@@ -164,32 +189,32 @@ bool DHT_Read( void ) {
 
     cli( );
         // Set sensor as output and bring it low for 20ms
-        DDRB |= _BV( Pin_Sensor );
-        PORTB &= ~_BV( Pin_Sensor );
+        SENSOR_DIR |= _BV( Pin_Sensor );
+        SENSOR_OUT &= ~_BV( Pin_Sensor );
 
         _delay_ms( 20 );
 
         // Set sensor pin to input with pull up and wait for 40us
-        DDRB &= ~_BV( Pin_Sensor );
-        PORTB |= _BV( Pin_Sensor );
+        SENSOR_DIR &= ~_BV( Pin_Sensor );
+        SENSOR_PINCTL = PORT_PULLUPEN_bm;
 
         _delay_us( 40 );
 
         // Wait for sensor to pull the data line low
-        WaitTimeout( bit_is_set( PINB, Pin_Sensor ), 100 );
+        WaitTimeout( bit_is_set( SENSOR_IN, Pin_Sensor ), 100 );
 
         // Wait for sensor to bring the data line high
-        WaitTimeout( bit_is_clear( PINB, Pin_Sensor ), 100 );
+        WaitTimeout( bit_is_clear( SENSOR_IN, Pin_Sensor ), 100 );
 
         // DHT11 returns 5 bytes of data
         for ( i = 0; i < sizeof( Data ); i++ ) {
             // Read each bit (MSB First)
             for ( Bit = 7; Bit >= 0; Bit-- ) {
                 // Wait for last bit to finish
-                WaitTimeout( bit_is_set( PINB, Pin_Sensor ), 100 );
+                WaitTimeout( bit_is_set( SENSOR_IN, Pin_Sensor ), 100 );
 
                 // Wait for start bit
-                WaitTimeout( bit_is_clear( PINB, Pin_Sensor ), 100 );
+                WaitTimeout( bit_is_clear( SENSOR_IN, Pin_Sensor ), 100 );
 
                 // Sample in the middle of a 1 bit (35us out of 70)
                 // If the sensor line is still high then it's a 1
@@ -200,7 +225,7 @@ bool DHT_Read( void ) {
 
                 // If the data line is still high then this bit is a 1
                 // set the appropriate bit and continue on
-                if ( bit_is_set( PINB, Pin_Sensor ) ) {
+                if ( bit_is_set( SENSOR_IN, Pin_Sensor ) ) {
                     Data[ i ] |= 1;
                 }
             }
@@ -214,8 +239,9 @@ bool DHT_Read( void ) {
     sei( );
 
     // Bring the sensor back to idle
-    DDRB |= _BV( Pin_Sensor );
-    PORTB |= _BV( Pin_Sensor );
+    SENSOR_PINCTL &= ~PORT_PULLUPEN_bm;
+    SENSOR_DIR |= _BV( Pin_Sensor );
+    SENSOR_OUT |= _BV( Pin_Sensor );
 
     TempWhole = Data[ 2 ];
     TempFrac = Data[ 3 ];
@@ -225,15 +251,22 @@ bool DHT_Read( void ) {
 
 int main( void ) {
     cli( );
-        DDRB = _BV( Pin_Sensor ) | _BV( Pin_CLK ) | _BV( Pin_Data ) | _BV( Pin_Latch );
+        SENSOR_DIR = 0;
+        SHIFT_DIR = 0;
+
+        SENSOR_DIR |= _BV( Pin_Sensor );
+        SHIFT_DIR |= _BV( Pin_CLK ) | _BV( Pin_Data ) | _BV( Pin_Latch );
 
         // Sensor line needs to start high
-        PORTB = _BV( Pin_Sensor );
+        SENSOR_OUT = Pin_Sensor;
     
         // ~1ms at 1MHz
-        OCR0A = ( uint16_t ) 999;
-        TIMSK0 = _BV( OCIE0A );
-        TCCR0B = _BV( CS00 ) | _BV( WGM02 );
+        //OCR0A = ( uint16_t ) 999;
+        //TIMSK0 = _BV( OCIE0A );
+        //TCCR0B = _BV( CS00 ) | _BV( WGM02 );
+        TCA0_SINGLE_PER = 416;
+        TCA0_SINGLE_CTRLA = TCA_SINGLE_CLKSEL_DIV8_gc | TCA_SINGLE_ENABLE_bm;
+        TCA0_SINGLE_INTCTRL = TCA_SINGLE_OVF_bm;
     sei( );
 
     while ( 1 ) {
