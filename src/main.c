@@ -21,7 +21,7 @@
 
 // PIN Configuration
 #define Pin_Sensor PIN7
-#define Pin_Latch PIN4
+#define Pin_Latch PIN6
 #define Pin_CLK PIN3
 #define Pin_Data PIN1
 
@@ -83,18 +83,9 @@ ISR( TCA0_OVF_vect ) {
         ShouldUpdateSensor = true;
         i = 0;
     }
-}
-/*
-ISR( TIM0_COMPA_vect ) {
-    static volatile uint16_t i = 0;
 
-    if ( ++i >= 5000 ) {
-        i = 0;
-
-        ShouldUpdateSensor = true;
-    }
+    TCA0_SINGLE_INTFLAGS |= TCA_SINGLE_OVF_bm;
 }
-*/
 
 void ShiftOut( uint8_t Data ) {
     uint8_t i = 0;
@@ -125,11 +116,11 @@ void UpdateDisplay( void ) {
     // Check if sensor pin is shared
 #if Pin_Sensor == Pin_CLK || Pin_Sensor == Pin_Data || Pin_Sensor == Pin_Latch
     // Bring sensor/data line back high
-    SHIFT_DIR |= Pin_Sensor;
-    SHIFT_OUT |= Pin_Sensor;
+    SENSOR_DIR |= Pin_Sensor;
+    SENSOR_OUT |= Pin_Sensor;
+#endif
 
     DisplayIndex++;
-#endif
 }
 
 void SetTemperature( uint8_t Whole, uint8_t Frac ) {
@@ -260,10 +251,7 @@ int main( void ) {
         // Sensor line needs to start high
         SENSOR_OUT = Pin_Sensor;
     
-        // ~1ms at 1MHz
-        //OCR0A = ( uint16_t ) 999;
-        //TIMSK0 = _BV( OCIE0A );
-        //TCCR0B = _BV( CS00 ) | _BV( WGM02 );
+        // ~1ms at 3.33MHz
         TCA0_SINGLE_PER = 416;
         TCA0_SINGLE_CTRLA = TCA_SINGLE_CLKSEL_DIV8_gc | TCA_SINGLE_ENABLE_bm;
         TCA0_SINGLE_INTCTRL = TCA_SINGLE_OVF_bm;
