@@ -7,7 +7,7 @@ OBJCOPY=avr-objcopy
 CC=avr-gcc
 LD=avr-ld
 
-CFLAGS=-g -Wall -Os -DF_CPU=$(FREQ) -D__AVR_ATtiny406__ -mmcu=$(MCU) -Wl,-g,-flto -Wa,-mgcc-isr
+CFLAGS=-g -Wall -Os -DF_CPU=$(FREQ) -D__AVR_ATtiny402__ -mmcu=$(MCU) -Wl,-g,-flto -Wa,-mgcc-isr
 LDFLAGS=-g -flto
 
 OBJS=build/main.o
@@ -33,7 +33,7 @@ size: build/$(PROJECT).elf
 flash:
 	avrdude -c jtag2updi -P /dev/ttyS3 -F -p t402w -U flash:w:build/$(PROJECT).hex
 
-all: clean build/$(PROJECT).hex size
+all: clean build/$(PROJECT).hex
 
 .PHONY: clean
 
